@@ -384,7 +384,7 @@ export default function MergeConflict() {
   return (
     <div style={{ minHeight: "100vh", background: `linear-gradient(135deg, #F0F4FF 0%, #FFF5F9 50%, #F0FFF4 100%)`, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: COLORS.text }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #7C9FE3 0%, #E8A0BF 100%)", padding: "32px 40px 24px", color: "#fff" }}>
+      <div className="app-header" style={{ background: "linear-gradient(135deg, #7C9FE3 0%, #E8A0BF 100%)", padding: "32px 40px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
             <span style={{ fontSize: 28 }}>💍</span>
@@ -395,8 +395,8 @@ export default function MergeConflict() {
       </div>
 
       {/* Tab Navigation */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div style={{ display: "flex", gap: 4, padding: "16px 0", flexWrap: "wrap", background: "rgba(255,255,255,0.6)", borderRadius: 12, marginTop: -12, paddingLeft: 12, paddingRight: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+      <div className="app-nav" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
+        <div className="tab-bar" style={{ display: "flex", gap: 4, padding: "16px 0", flexWrap: "wrap", background: "rgba(255,255,255,0.6)", borderRadius: 12, marginTop: -12, paddingLeft: 12, paddingRight: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
           {[
             ["overview", "Overview", "📋"],
             ["income", "Income & Taxes", "💵"],
@@ -412,16 +412,16 @@ export default function MergeConflict() {
       </div>
 
       {/* Content */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 60px" }}>
+      <div className="app-content" style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 60px" }}>
 
         {/* ═══ OVERVIEW TAB ═══ */}
         {tab === "overview" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
             {/* Household Contribution Controls */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24 }}>
+            <div className="grid-3" style={{ gap: 24 }}>
               {/* Your Contribution */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={{ ...h2Style, color: COLORS.primary }}>👤 His Contribution</h2>
                 <Slider label="Contribute to Household" value={hisContribPct} min={0} max={100} step={5} onChange={setHisContribPct} color={COLORS.primary} format={(v) => v + "%"} />
                 <div style={{ background: `${COLORS.primary}0D`, borderRadius: 12, padding: 14, marginTop: 4 }}>
@@ -441,7 +441,7 @@ export default function MergeConflict() {
               </div>
 
               {/* Partner Contribution */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={{ ...h2Style, color: COLORS.secondary }}>👩 Her Contribution</h2>
                 <Slider label="Contribute to Household" value={partnerContribPct} min={0} max={100} step={5} onChange={setPartnerContribPct} color={COLORS.secondary} format={(v) => v + "%"} />
                 <div style={{ background: `${COLORS.secondary}0D`, borderRadius: 12, padding: 14, marginTop: 4 }}>
@@ -461,7 +461,7 @@ export default function MergeConflict() {
               </div>
 
               {/* Investment Draw */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={{ ...h2Style, color: "#5BAE9F" }}>📈 Investment Draw</h2>
                 <CurrencyInput label="Drawn $/mo for Household (after tax)" value={monthlyInvestDraw} onChange={setMonthlyInvestDraw} color="#5BAE9F" />
                 <div style={{ background: `${COLORS.accent1}0D`, borderRadius: 12, padding: 14, marginTop: 4 }}>
@@ -490,30 +490,30 @@ export default function MergeConflict() {
             </div>
 
             {/* Total Household Income + Surplus */}
-            <div style={{ ...cardStyle, background: `linear-gradient(135deg, ${COLORS.primary}08, ${COLORS.secondary}08, ${COLORS.accent1}08)` }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 20, alignItems: "center" }}>
+            <div className="mc-card" style={{ ...cardStyle, background: `linear-gradient(135deg, ${COLORS.primary}08, ${COLORS.secondary}08, ${COLORS.accent1}08)` }}>
+              <div className="grid-4" style={{ gap: 20, alignItems: "center" }}>
                 <div style={{ textAlign: "center" }}>
                   <div style={labelStyle}>Total Household Income</div>
-                  <div style={{ fontWeight: 800, fontSize: 26, color: COLORS.success }}>{fmt(calc.totalMonthlyIncome)}<span style={{ fontSize: 14, fontWeight: 500 }}>/mo</span></div>
+                  <div className="kpi-big" style={{ fontWeight: 800, fontSize: 26, color: COLORS.success }}>{fmt(calc.totalMonthlyIncome)}<span style={{ fontSize: 14, fontWeight: 500 }}>/mo</span></div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={labelStyle}>Total Spending</div>
-                  <div style={{ fontWeight: 800, fontSize: 26, color: COLORS.warning }}>{fmt(calc.totalMonthlySpending)}<span style={{ fontSize: 14, fontWeight: 500 }}>/mo</span></div>
+                  <div className="kpi-big" style={{ fontWeight: 800, fontSize: 26, color: COLORS.warning }}>{fmt(calc.totalMonthlySpending)}<span style={{ fontSize: 14, fontWeight: 500 }}>/mo</span></div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={labelStyle}>Monthly Surplus</div>
-                  <div style={{ fontWeight: 800, fontSize: 26, color: surplusColor }}>{fmt(calc.monthlySurplus)}<span style={{ fontSize: 14, fontWeight: 500 }}>/mo</span></div>
+                  <div className="kpi-big" style={{ fontWeight: 800, fontSize: 26, color: surplusColor }}>{fmt(calc.monthlySurplus)}<span style={{ fontSize: 14, fontWeight: 500 }}>/mo</span></div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={labelStyle}>Annual Surplus</div>
-                  <div style={{ fontWeight: 800, fontSize: 26, color: surplusColor }}>{fmt(calc.monthlySurplus * 12)}<span style={{ fontSize: 14, fontWeight: 500 }}>/yr</span></div>
+                  <div className="kpi-big" style={{ fontWeight: 800, fontSize: 26, color: surplusColor }}>{fmt(calc.monthlySurplus * 12)}<span style={{ fontSize: 14, fontWeight: 500 }}>/yr</span></div>
                 </div>
               </div>
             </div>
 
             {/* Income vs Spending Pie Charts */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-              <div style={cardStyle}>
+            <div className="grid-2" style={{ gap: 24 }}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>Household Income Sources</h2>
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
@@ -525,7 +525,7 @@ export default function MergeConflict() {
                 </ResponsiveContainer>
               </div>
 
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>Monthly Spending Breakdown</h2>
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
@@ -539,7 +539,7 @@ export default function MergeConflict() {
             </div>
 
             {/* Budget Health Bar */}
-            <div style={cardStyle}>
+            <div className="mc-card" style={cardStyle}>
               <h2 style={h2Style}>Monthly Budget Health</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[
@@ -571,14 +571,14 @@ export default function MergeConflict() {
         {/* ═══ INCOME & TAXES TAB ═══ */}
         {tab === "income" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div className="grid-2" style={{ gap: 24 }}>
               {/* Your Income */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={{ ...h2Style, color: COLORS.primary }}>👤 His Income</h2>
                 <CurrencyInput label="Base Salary" value={hisSalary} onChange={setHisSalary} color={COLORS.primary} />
                 <CurrencyInput label="Annual Bonus" value={hisBonus} onChange={setHisBonus} color={COLORS.primary} />
                 <div style={{ background: `${COLORS.primary}0D`, borderRadius: 12, padding: 16, marginTop: 8 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="grid-2-sm" style={{ gap: 12 }}>
                     <div><span style={labelStyle}>Gross Annual</span><div style={{ fontWeight: 700, fontSize: 18 }}>{fmt(calc.hisGross)}</div></div>
                     <div><span style={labelStyle}>Total Tax</span><div style={{ fontWeight: 700, fontSize: 18, color: COLORS.danger }}>{fmt(calc.hisTax.total)}</div></div>
                     <div><span style={labelStyle}>Net Annual</span><div style={{ fontWeight: 700, fontSize: 18, color: COLORS.success }}>{fmt(calc.hisNet)}</div></div>
@@ -589,11 +589,11 @@ export default function MergeConflict() {
               </div>
 
               {/* Partner Income */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={{ ...h2Style, color: COLORS.secondary }}>👩 Her Income</h2>
                 <CurrencyInput label="Annual Salary" value={partnerSalary} onChange={setPartnerSalary} color={COLORS.secondary} />
                 <div style={{ background: `${COLORS.secondary}0D`, borderRadius: 12, padding: 16, marginTop: 8 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="grid-2-sm" style={{ gap: 12 }}>
                     <div><span style={labelStyle}>Gross Annual</span><div style={{ fontWeight: 700, fontSize: 18 }}>{fmt(calc.partnerGross)}</div></div>
                     <div><span style={labelStyle}>Total Tax</span><div style={{ fontWeight: 700, fontSize: 18, color: COLORS.danger }}>{fmt(calc.partnerTax.total)}</div></div>
                     <div><span style={labelStyle}>Net Annual</span><div style={{ fontWeight: 700, fontSize: 18, color: COLORS.success }}>{fmt(calc.partnerNet)}</div></div>
@@ -605,9 +605,9 @@ export default function MergeConflict() {
             </div>
 
             {/* Investment Income */}
-            <div style={cardStyle}>
+            <div className="mc-card" style={cardStyle}>
               <h2 style={{ ...h2Style, color: "#5BAE9F" }}>📈 Investment & Portfolio Income</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              <div className="grid-2" style={{ gap: 24 }}>
                 <div>
                   <CurrencyInput label="Investment Portfolio" value={investmentAssets} onChange={setInvestmentAssets} color="#5BAE9F" />
                   <Slider label="Expected Return" value={investReturnRate} min={1} max={15} step={0.5} onChange={setInvestReturnRate} color="#5BAE9F" format={(v) => v + "%"} />
@@ -626,7 +626,7 @@ export default function MergeConflict() {
             </div>
 
             {/* Tax Comparison Chart */}
-            <div style={cardStyle}>
+            <div className="mc-card" style={cardStyle}>
               <h2 style={h2Style}>Annual Tax Breakdown Comparison</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={taxComparison}>
@@ -647,9 +647,9 @@ export default function MergeConflict() {
         {/* ═══ PRIMARY HOME TAB ═══ */}
         {tab === "home" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div className="grid-2" style={{ gap: 24 }}>
               {/* Left: Inputs */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>🏠 Home Search Parameters</h2>
                 <CurrencyInput label="Home Price" value={homePrice} onChange={setHomePrice} color={COLORS.primary} />
                 <CurrencyInput label="Down Payment" value={downPayment} onChange={setDownPayment} color={COLORS.accent1} />
@@ -673,7 +673,7 @@ export default function MergeConflict() {
               {/* Right: Monthly Cost Breakdown + Summary */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {/* Monthly Cost Breakdown */}
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>Monthly Estimated Cost</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {[
@@ -697,7 +697,7 @@ export default function MergeConflict() {
                 </div>
 
                 {/* Summary: Income → Housing → Net */}
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>Monthly Summary</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                     {/* Monthly Income */}
@@ -764,9 +764,9 @@ export default function MergeConflict() {
         {/* ═══ CHILDREN TAB ═══ */}
         {tab === "children" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div className="grid-2" style={{ gap: 24 }}>
               {/* Left: Inputs */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>👶 Children Costs</h2>
                 <CurrencyInput label="Nanny (monthly)" value={nannyMonthly} onChange={setNannyMonthly} color={COLORS.secondary} />
                 <CurrencyInput label="Day Care (monthly)" value={dayCareMonthly} onChange={setDayCareMonthly} color={COLORS.accent3} />
@@ -790,7 +790,7 @@ export default function MergeConflict() {
               </div>
 
               {/* Right: Summary */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>Monthly Summary</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                   {/* Monthly Income */}
@@ -885,11 +885,11 @@ export default function MergeConflict() {
         {/* ═══ LIVING EXPENSES TAB ═══ */}
         {tab === "living" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div className="grid-2" style={{ gap: 24 }}>
               {/* Left: Inputs */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {/* Annual Section */}
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>📅 Annual Expenses</h2>
                   <CurrencyInput label="Club Memberships (annual)" value={clubMemberships} onChange={setClubMemberships} color={COLORS.accent3} />
                   {clubMemberships > 0 && (
@@ -912,7 +912,7 @@ export default function MergeConflict() {
                 </div>
 
                 {/* Monthly Section */}
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>🗓️ Monthly Expenses</h2>
                   <CurrencyInput label="Health / Fitness" value={healthFitness} onChange={setHealthFitness} color={COLORS.success} />
                   <CurrencyInput label="Food and Dining" value={foodDining} onChange={setFoodDining} color={COLORS.secondary} />
@@ -929,7 +929,7 @@ export default function MergeConflict() {
               {/* Right: Summary */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {/* Total Living Cost */}
-                <div style={{ ...cardStyle, background: `linear-gradient(135deg, ${COLORS.accent3}08, ${COLORS.secondary}08)` }}>
+                <div className="mc-card" style={{ ...cardStyle, background: `linear-gradient(135deg, ${COLORS.accent3}08, ${COLORS.secondary}08)` }}>
                   <h2 style={h2Style}>Total Living Expenses</h2>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                     <div>
@@ -945,7 +945,7 @@ export default function MergeConflict() {
                 </div>
 
                 {/* Waterfall Summary */}
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>Monthly Summary</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                     {/* Net Income */}
@@ -1049,10 +1049,10 @@ export default function MergeConflict() {
         {/* ═══ SAVINGS & GOALS TAB ═══ */}
         {tab === "goals" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div className="grid-2" style={{ gap: 24 }}>
               {/* Left: Fund Setup */}
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>🎯 Big Purchase Fund</h2>
                   <CurrencyInput label="Current Fund Balance" value={currentFundBalance} onChange={setCurrentFundBalance} color={COLORS.success} />
                   <Slider
@@ -1081,7 +1081,7 @@ export default function MergeConflict() {
                 </div>
 
                 {/* Fund Growth Preview */}
-                <div style={cardStyle}>
+                <div className="mc-card" style={cardStyle}>
                   <h2 style={h2Style}>Fund Growth Preview</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {[3, 6, 12, 24].map((m) => {
@@ -1098,7 +1098,7 @@ export default function MergeConflict() {
               </div>
 
               {/* Right: Purchase Queue */}
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>🛒 Purchase Queue</h2>
 
                 {/* Add Item Form */}
@@ -1262,7 +1262,7 @@ export default function MergeConflict() {
         {/* ═══ MONEY FLOW TAB ═══ */}
         {tab === "flow" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={cardStyle}>
+            <div className="mc-card" style={cardStyle}>
               <h2 style={h2Style}>Where Every Dollar Goes (Monthly)</h2>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={whereItGoes} layout="vertical">
@@ -1279,8 +1279,8 @@ export default function MergeConflict() {
             </div>
 
             {/* Side by side: Who Earns vs Who Spends */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-              <div style={cardStyle}>
+            <div className="grid-2" style={{ gap: 24 }}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>Income Contribution</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {[
@@ -1305,7 +1305,7 @@ export default function MergeConflict() {
                 </div>
               </div>
 
-              <div style={cardStyle}>
+              <div className="mc-card" style={cardStyle}>
                 <h2 style={h2Style}>Annual Summary</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {[
@@ -1327,7 +1327,7 @@ export default function MergeConflict() {
             </div>
 
             {/* Lifestyle Balance Meter */}
-            <div style={cardStyle}>
+            <div className="mc-card" style={cardStyle}>
               <h2 style={h2Style}>Lifestyle Balance</h2>
               <div style={{ display: "flex", height: 50, borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                 {[
