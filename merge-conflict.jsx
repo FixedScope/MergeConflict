@@ -214,6 +214,7 @@ export default function MergeConflict() {
   const [hisSalary, setHisSalary] = useLocalStorage("mc_hisSalary", 130000);
   const [hisBonus, setHisBonus] = useLocalStorage("mc_hisBonus", 15000);
   const [partnerSalary, setPartnerSalary] = useLocalStorage("mc_partnerSalary", 110000);
+  const [partnerBonus, setPartnerBonus] = useLocalStorage("mc_partnerBonus", 10000);
   const [hisContribPct, setHisContribPct] = useLocalStorage("mc_hisContribPct", 100);
   const [partnerContribPct, setPartnerContribPct] = useLocalStorage("mc_partnerContribPct", 100);
   const [investmentAssets, setInvestmentAssets] = useLocalStorage("mc_investmentAssets", 120000);
@@ -261,7 +262,7 @@ export default function MergeConflict() {
   const calc = useMemo(() => {
     // Gross incomes
     const hisGross = hisSalary + hisBonus;
-    const partnerGross = partnerSalary;
+    const partnerGross = partnerSalary + partnerBonus;
     const combinedGross = hisGross + partnerGross;
 
     // Taxes
@@ -337,7 +338,7 @@ export default function MergeConflict() {
       totalMonthlyIncome, totalMonthlySpending, monthlySurplus,
       totalNetWorth,
     };
-  }, [hisSalary, hisBonus, partnerSalary, hisContribPct, partnerContribPct,
+  }, [hisSalary, hisBonus, partnerSalary, partnerBonus, hisContribPct, partnerContribPct,
     investmentAssets, investReturnRate, monthlyInvestDraw,
     partnerStocks, partnerStockReturn, homePrice, downPayment, mortgageRate,
     monthlyTaxes, monthlyHOA, nannyMonthly, dayCareMonthly, privateSchoolAnnual,
@@ -592,6 +593,7 @@ export default function MergeConflict() {
               <div className="mc-card" style={cardStyle}>
                 <h2 style={{ ...h2Style, color: COLORS.secondary }}>👩 Her Income</h2>
                 <CurrencyInput label="Annual Salary" value={partnerSalary} onChange={setPartnerSalary} color={COLORS.secondary} />
+                <CurrencyInput label="Annual Bonus" value={partnerBonus} onChange={setPartnerBonus} color={COLORS.secondary} />
                 <div style={{ background: `${COLORS.secondary}0D`, borderRadius: 12, padding: 16, marginTop: 8 }}>
                   <div className="grid-2-sm" style={{ gap: 12 }}>
                     <div><span style={labelStyle}>Gross Annual</span><div style={{ fontWeight: 700, fontSize: 18 }}>{fmt(calc.partnerGross)}</div></div>
