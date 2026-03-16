@@ -36,6 +36,18 @@ body { margin: 0; }
   .tab-bar::-webkit-scrollbar { display: none; }
   .tab-bar button { flex-shrink: 0; padding: 8px 10px !important; font-size: 12px !important; }
 
+  /* Fade-out on right edge to hint scrollability */
+  .app-nav { position: relative; }
+  .app-nav::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 48px;
+    background: linear-gradient(to right, transparent, #F0F4FF);
+    pointer-events: none;
+    z-index: 2;
+  }
+
   /* Cards: tighter padding */
   .mc-card { padding: 16px !important; }
 
