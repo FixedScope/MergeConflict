@@ -53,6 +53,9 @@ body { margin: 0; }
 
   /* Scale down large KPI numbers so they don't overflow */
   .kpi-big { font-size: 20px !important; }
+
+  /* Tax jurisdiction selector: full width on mobile */
+  .tax-select { width: 100% !important; min-width: 0 !important; }
 }
 
 /* ─── Very small screens (≤ 380px) ─── */

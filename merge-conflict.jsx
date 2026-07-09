@@ -17,45 +17,120 @@ function useLocalStorage(key, defaultValue) {
 }
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Sankey, Treemap } from "recharts";
 
-// ─── NYC Tax Calculator ───
-function calcNYCTaxes(grossIncome) {
-  // 2025 brackets (approximate)
-  // Federal
-  const fedBrackets = [
-    [11600, 0.10], [47150 - 11600, 0.12], [100525 - 47150, 0.22],
-    [191950 - 100525, 0.24], [243725 - 191950, 0.32],
-    [609350 - 243725, 0.35], [Infinity, 0.37]
-  ];
-  // NY State
-  const nyBrackets = [
-    [8500, 0.04], [11700 - 8500, 0.045], [13900 - 11700, 0.0525],
-    [80650 - 13900, 0.0585], [215400 - 80650, 0.0625],
-    [1077550 - 215400, 0.0685], [5000000 - 1077550, 0.0965],
-    [25000000 - 5000000, 0.103], [Infinity, 0.109]
-  ];
-  // NYC local
-  const nycBrackets = [
-    [12000, 0.03078], [25000 - 12000, 0.03762],
-    [50000 - 25000, 0.03819], [Infinity, 0.03876]
-  ];
+// ─── Tax bracket tables (2025, approximate) ───
+// Each entry is [bracketWidth, marginalRate].
+const FED_BRACKETS = [
+  [11600, 0.10], [47150 - 11600, 0.12], [100525 - 47150, 0.22],
+  [191950 - 100525, 0.24], [243725 - 191950, 0.32],
+  [609350 - 243725, 0.35], [Infinity, 0.37]
+];
+const NY_STATE_BRACKETS = [
+  [8500, 0.04], [11700 - 8500, 0.045], [13900 - 11700, 0.0525],
+  [80650 - 13900, 0.0585], [215400 - 80650, 0.0625],
+  [1077550 - 215400, 0.0685], [5000000 - 1077550, 0.0965],
+  [25000000 - 5000000, 0.103], [Infinity, 0.109]
+];
+const NYC_LOCAL_BRACKETS = [
+  [12000, 0.03078], [25000 - 12000, 0.03762],
+  [50000 - 25000, 0.03819], [Infinity, 0.03876]
+];
 
-  function applyBrackets(income, brackets) {
-    let tax = 0, remaining = income;
-    for (const [width, rate] of brackets) {
-      if (remaining <= 0) break;
-      const taxable = Math.min(remaining, width);
-      tax += taxable * rate;
-      remaining -= taxable;
-    }
-    return tax;
+function applyBrackets(income, brackets) {
+  let tax = 0, remaining = income;
+  for (const [width, rate] of brackets) {
+    if (remaining <= 0) break;
+    const taxable = Math.min(remaining, width);
+    tax += taxable * rate;
+    remaining -= taxable;
+  }
+  return tax;
+}
+
+// ─── Jurisdiction configs ───
+// Each city defines how state & local income tax are computed. Federal + FICA
+// are the same everywhere. State can use progressive brackets OR a flat rate,
+// plus an optional surtax above a threshold (e.g. the MA "millionaire" surtax).
+const JURISDICTIONS = {
+  nyc: {
+    name: "New York City", stateLabel: "NY State", localLabel: "NYC Local",
+    stateBrackets: NY_STATE_BRACKETS, stateFlatRate: 0,
+    localBrackets: NYC_LOCAL_BRACKETS, surtax: null,
+  },
+  fl: {
+    name: "Florida", stateLabel: "State Tax", localLabel: "Local Tax",
+    stateBrackets: null, stateFlatRate: 0,
+    localBrackets: null, surtax: null,
+  },
+  boston: {
+    name: "Boston, MA", stateLabel: "MA State", localLabel: "Local Tax",
+    stateBrackets: null, stateFlatRate: 0.05,
+    localBrackets: null, surtax: { threshold: 1000000, rate: 0.04 },
+  },
+};
+const JURISDICTION_ORDER = ["nyc", "fl", "boston"];
+
+// ─── Location-aware ordinary-income tax calculator ───
+function calcTaxes(grossIncome, locationId = "nyc") {
+  const jur = JURISDICTIONS[locationId] || JURISDICTIONS.nyc;
+
+  // FICA (federal, location-independent)
+  const fica = Math.min(grossIncome, 168600) * 0.0765 + Math.max(0, grossIncome - 168600) * 0.0145 + Math.max(0, grossIncome - 200000) * 0.009;
+  const federal = applyBrackets(grossIncome, FED_BRACKETS);
+
+  // State
+  let state = jur.stateBrackets
+    ? applyBrackets(grossIncome, jur.stateBrackets)
+    : grossIncome * (jur.stateFlatRate || 0);
+  if (jur.surtax && grossIncome > jur.surtax.threshold) {
+    state += (grossIncome - jur.surtax.threshold) * jur.surtax.rate;
   }
 
-  const fica = Math.min(grossIncome, 168600) * 0.0765 + Math.max(0, grossIncome - 168600) * 0.0145 + Math.max(0, grossIncome - 200000) * 0.009;
-  const federal = applyBrackets(grossIncome, fedBrackets);
-  const nyState = applyBrackets(grossIncome, nyBrackets);
-  const nycLocal = applyBrackets(grossIncome, nycBrackets);
+  // Local
+  const local = jur.localBrackets ? applyBrackets(grossIncome, jur.localBrackets) : 0;
 
-  return { federal, nyState, nycLocal, fica, total: federal + nyState + nycLocal + fica };
+  return {
+    federal, state, local, fica,
+    total: federal + state + local + fica,
+    meta: { name: jur.name, stateLabel: jur.stateLabel, localLabel: jur.localLabel },
+  };
+}
+
+// ─── Investment income tax + Net Investment Income Tax (NIIT) ───
+// Long-term capital gains / qualified dividends are taxed at federal 0/15/20%,
+// stacked on top of ordinary income. State treats gains as ordinary income.
+// NIIT is a flat 3.8% federal surtax on net investment income above the MAGI
+// threshold. Defaults to married-filing-jointly (a couples app).
+const FILING_MFJ = {
+  ltcg: [[96700, 0], [600050, 0.15], [Infinity, 0.20]], // [upperBound, rate]
+  niitThreshold: 250000,
+};
+
+function calcInvestmentTax(investIncome, locationId = "nyc", otherOrdinaryIncome = 0, filing = FILING_MFJ) {
+  const invest = Math.max(0, investIncome);
+
+  // Federal LTCG rate: fill the 0/15/20% bands sitting above ordinary income.
+  let federalCapGains = 0;
+  let filled = otherOrdinaryIncome;      // income already "used up" below the gains
+  let remaining = invest;
+  for (const [upper, rate] of filing.ltcg) {
+    if (remaining <= 0) break;
+    const room = Math.max(0, upper - filled);
+    const taxable = Math.min(remaining, room);
+    federalCapGains += taxable * rate;
+    filled += taxable;
+    remaining -= taxable;
+  }
+
+  // State treats the gains as ordinary income → marginal delta of state tax.
+  const stateOnBoth = calcTaxes(otherOrdinaryIncome + invest, locationId).state;
+  const stateOnOrdinary = calcTaxes(otherOrdinaryIncome, locationId).state;
+  const stateTax = Math.max(0, stateOnBoth - stateOnOrdinary);
+
+  // NIIT: 3.8% on the lesser of investment income and (MAGI − threshold).
+  const magi = otherOrdinaryIncome + invest;
+  const niit = 0.038 * Math.min(invest, Math.max(0, magi - filing.niitThreshold));
+
+  return { federalCapGains, stateTax, niit, total: federalCapGains + stateTax + niit };
 }
 
 // ─── Formatting ───
@@ -210,6 +285,9 @@ function CustomTooltip({ active, payload, label }) {
 export default function MergeConflict() {
   const [tab, setTab] = useState("overview");
 
+  // ─── Tax jurisdiction (drives the whole planner) ───
+  const [taxLocation, setTaxLocation] = useLocalStorage("mc_taxLocation", "nyc");
+
   // ─── Income inputs ───
   const [hisSalary, setHisSalary] = useLocalStorage("mc_hisSalary", 130000);
   const [hisBonus, setHisBonus] = useLocalStorage("mc_hisBonus", 15000);
@@ -265,13 +343,23 @@ export default function MergeConflict() {
     const partnerGross = partnerSalary + partnerBonus;
     const combinedGross = hisGross + partnerGross;
 
-    // Taxes
-    const hisTax = calcNYCTaxes(hisGross);
-    const partnerTax = calcNYCTaxes(partnerGross);
+    // Taxes (for the selected jurisdiction)
+    const hisTax = calcTaxes(hisGross, taxLocation);
+    const partnerTax = calcTaxes(partnerGross, taxLocation);
     const hisNet = hisGross - hisTax.total;
     const partnerNet = partnerGross - partnerTax.total;
     const combinedNet = hisNet + partnerNet;
     const combinedMonthlyNet = combinedNet / 12;
+
+    // Combined household ordinary-income tax breakdown (sum of both partners)
+    const combinedTax = {
+      federal: hisTax.federal + partnerTax.federal,
+      state: hisTax.state + partnerTax.state,
+      local: hisTax.local + partnerTax.local,
+      fica: hisTax.fica + partnerTax.fica,
+      total: hisTax.total + partnerTax.total,
+      meta: hisTax.meta,
+    };
 
     // Household contributions from salary
     const hisMonthlyContrib = (hisNet / 12) * (hisContribPct / 100);
@@ -279,17 +367,19 @@ export default function MergeConflict() {
 
     // Investment income — user sets desired monthly after-tax draw
     const totalInvestReturn = investmentAssets * (investReturnRate / 100);
-    // Back-calculate: find pre-tax draw that yields monthlyInvestDraw after NYC taxes
-    // Use binary search to solve: grossDraw - tax(grossDraw) = monthlyInvestDraw * 12
+    // Investment income tax + NIIT on the full portfolio return (for the breakdown card)
+    const investmentTax = calcInvestmentTax(totalInvestReturn, taxLocation, combinedGross);
+    // Back-calculate: find pre-tax draw that yields monthlyInvestDraw after investment taxes.
+    // Solve: grossDraw - investmentTax(grossDraw) = monthlyInvestDraw * 12
     const targetAnnualAfterTax = monthlyInvestDraw * 12;
     let lo = 0, hi = Math.max(totalInvestReturn, targetAnnualAfterTax * 2.5);
     for (let i = 0; i < 50; i++) {
       const mid = (lo + hi) / 2;
-      const netMid = mid - calcNYCTaxes(mid).total;
+      const netMid = mid - calcInvestmentTax(mid, taxLocation, combinedGross).total;
       if (netMid < targetAnnualAfterTax) lo = mid; else hi = mid;
     }
     const investDrawPreTax = Math.min((lo + hi) / 2, totalInvestReturn);
-    const investTax = calcNYCTaxes(investDrawPreTax);
+    const investTax = calcInvestmentTax(investDrawPreTax, taxLocation, combinedGross);
     const investIncomeAfterTax = investDrawPreTax - investTax.total;
     const investIncomeMonthlyAfterTax = investIncomeAfterTax / 12;
     const reinvested = totalInvestReturn - investDrawPreTax;
@@ -328,7 +418,7 @@ export default function MergeConflict() {
 
     return {
       hisGross, partnerGross, combinedGross,
-      hisTax, partnerTax, hisNet, partnerNet,
+      hisTax, partnerTax, combinedTax, investmentTax, hisNet, partnerNet,
       combinedNet, combinedMonthlyNet,
       hisMonthlyContrib, partnerMonthlyContrib,
       investDrawPreTax, investTax, investIncomeMonthlyAfterTax, investIncomeAfterTax,
@@ -338,7 +428,7 @@ export default function MergeConflict() {
       totalMonthlyIncome, totalMonthlySpending, monthlySurplus,
       totalNetWorth,
     };
-  }, [hisSalary, hisBonus, partnerSalary, partnerBonus, hisContribPct, partnerContribPct,
+  }, [taxLocation, hisSalary, hisBonus, partnerSalary, partnerBonus, hisContribPct, partnerContribPct,
     investmentAssets, investReturnRate, monthlyInvestDraw,
     partnerStocks, partnerStockReturn, homePrice, downPayment, mortgageRate,
     monthlyTaxes, monthlyHOA, nannyMonthly, dayCareMonthly, privateSchoolAnnual,
@@ -362,15 +452,16 @@ export default function MergeConflict() {
     { name: "Purchase Fund", value: monthlyFundContrib },
   ];
 
+  const jurMeta = calc.hisTax.meta;
   const taxComparison = [
-    { name: "His", Federal: Math.round(calc.hisTax.federal), "NY State": Math.round(calc.hisTax.nyState), "NYC Local": Math.round(calc.hisTax.nycLocal), FICA: Math.round(calc.hisTax.fica) },
-    { name: "Hers", Federal: Math.round(calc.partnerTax.federal), "NY State": Math.round(calc.partnerTax.nyState), "NYC Local": Math.round(calc.partnerTax.nycLocal), FICA: Math.round(calc.partnerTax.fica) },
+    { name: "His", federal: Math.round(calc.hisTax.federal), state: Math.round(calc.hisTax.state), local: Math.round(calc.hisTax.local), fica: Math.round(calc.hisTax.fica) },
+    { name: "Hers", federal: Math.round(calc.partnerTax.federal), state: Math.round(calc.partnerTax.state), local: Math.round(calc.partnerTax.local), fica: Math.round(calc.partnerTax.fica) },
   ];
 
   const whereItGoes = [
     { name: "Federal Tax", value: Math.round((calc.hisTax.federal + calc.partnerTax.federal) / 12) },
-    { name: "State Tax", value: Math.round((calc.hisTax.nyState + calc.partnerTax.nyState) / 12) },
-    { name: "NYC Tax", value: Math.round((calc.hisTax.nycLocal + calc.partnerTax.nycLocal) / 12) },
+    { name: jurMeta.stateLabel, value: Math.round((calc.hisTax.state + calc.partnerTax.state) / 12) },
+    { name: jurMeta.localLabel, value: Math.round((calc.hisTax.local + calc.partnerTax.local) / 12) },
     { name: "FICA", value: Math.round((calc.hisTax.fica + calc.partnerTax.fica) / 12) },
     { name: "Housing", value: Math.round(calc.totalMonthlyHousing) },
     { name: "Children", value: Math.round(calc.monthlyChildren) },
@@ -391,7 +482,10 @@ export default function MergeConflict() {
             <span style={{ fontSize: 28 }}>💍</span>
             <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>Merge Conflict</h1>
           </div>
-          <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Your shared financial life, beautifully planned</p>
+          <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>
+            Your shared financial life, beautifully planned
+            <span style={{ opacity: 0.85 }}> · Taxes for {jurMeta.name}</span>
+          </p>
         </div>
       </div>
 
@@ -572,6 +666,120 @@ export default function MergeConflict() {
         {/* ═══ INCOME & TAXES TAB ═══ */}
         {tab === "income" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+            {/* Tax Jurisdiction Selector */}
+            <div className="mc-card" style={cardStyle}>
+              <div className="grid-2" style={{ gap: 24, alignItems: "center" }}>
+                <div>
+                  <h2 style={{ ...h2Style, marginBottom: 8 }}>🧮 Tax Jurisdiction</h2>
+                  <div style={{ fontSize: 13, color: COLORS.textLight, marginBottom: 12 }}>
+                    Pick where you live — every tax figure and chart in the planner recalculates for the selected city.
+                  </div>
+                  <select
+                    className="tax-select"
+                    value={taxLocation}
+                    onChange={(e) => setTaxLocation(e.target.value)}
+                    style={{
+                      padding: "12px 16px", fontSize: 16, fontWeight: 700,
+                      border: `1.5px solid ${COLORS.border}`, borderRadius: 10,
+                      background: `${COLORS.primary}06`, color: COLORS.text,
+                      cursor: "pointer", outline: "none", appearance: "none",
+                      minWidth: 240, boxSizing: "border-box",
+                    }}
+                  >
+                    {JURISDICTION_ORDER.map((id) => (
+                      <option key={id} value={id}>{JURISDICTIONS[id].name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid-2-sm" style={{ gap: 12 }}>
+                  <StatCard label="Household Gross" value={fmt(calc.combinedGross)} color={COLORS.primary} icon="💰" />
+                  <StatCard label="Total Tax" value={fmt(calc.combinedTax.total + calc.investmentTax.total)} color={COLORS.danger} icon="🧾" />
+                  <StatCard label="Take-Home" value={fmt(calc.combinedNet)} color={COLORS.success} icon="✅" />
+                  <StatCard
+                    label="Effective Rate"
+                    value={((calc.combinedTax.total + calc.investmentTax.total) / (calc.combinedGross + calc.totalInvestReturn) * 100).toFixed(1) + "%"}
+                    color={COLORS.accent3}
+                    icon="📊"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Tax Calculation Breakdown for the selected city */}
+            <div className="mc-card" style={cardStyle}>
+              <h2 style={h2Style}>Tax Calculation Breakdown — {jurMeta.name}</h2>
+              <div className="grid-2" style={{ gap: 24 }}>
+
+                {/* Ordinary income taxes */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.textLight, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                    On Household Income · {fmt(calc.combinedGross)}
+                  </div>
+                  {[
+                    { label: "Federal Income Tax", val: calc.combinedTax.federal, show: true },
+                    { label: jurMeta.stateLabel, val: calc.combinedTax.state, show: calc.combinedTax.state > 0 },
+                    { label: jurMeta.localLabel, val: calc.combinedTax.local, show: calc.combinedTax.local > 0 },
+                    { label: "FICA (Soc. Sec. + Medicare)", val: calc.combinedTax.fica, show: true },
+                  ].filter((r) => r.show).map((r) => (
+                    <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+                      <span style={{ fontSize: 14, color: COLORS.text }}>{r.label}</span>
+                      <span style={{ fontWeight: 700, color: COLORS.text }}>{fmt(r.val)}</span>
+                    </div>
+                  ))}
+                  {taxLocation === "boston" && (
+                    <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 8 }}>
+                      Massachusetts adds a 4% surtax on income above $1M per filer.
+                    </div>
+                  )}
+                  {(taxLocation === "fl") && (
+                    <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 8 }}>
+                      Florida has no state or local income tax.
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0 0", marginTop: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 15 }}>Income Tax Subtotal</span>
+                    <span style={{ fontWeight: 800, fontSize: 18, color: COLORS.danger }}>{fmt(calc.combinedTax.total)}</span>
+                  </div>
+                </div>
+
+                {/* Investment + NIIT */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.textLight, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                    On Investment Income · {fmt(calc.totalInvestReturn)}
+                  </div>
+                  {[
+                    { label: "Federal Capital Gains (0/15/20%)", val: calc.investmentTax.federalCapGains },
+                    { label: `State on Investments (${jurMeta.stateLabel})`, val: calc.investmentTax.stateTax },
+                    { label: "Net Investment Income Tax (3.8%)", val: calc.investmentTax.niit },
+                  ].map((r) => (
+                    <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+                      <span style={{ fontSize: 14, color: COLORS.text }}>{r.label}</span>
+                      <span style={{ fontWeight: 700, color: COLORS.text }}>{fmt(r.val)}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 8 }}>
+                    Long-term rates stacked on wage income; NIIT applies to investment income once household MAGI exceeds $250k (married filing jointly).
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0 0", marginTop: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 15 }}>Investment Tax Subtotal</span>
+                    <span style={{ fontWeight: 800, fontSize: 18, color: COLORS.danger }}>{fmt(calc.investmentTax.total)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grand total */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, padding: "16px 18px", background: `linear-gradient(135deg, ${COLORS.primary}12, ${COLORS.secondary}12)`, borderRadius: 12, borderTop: `2px solid ${COLORS.primary}` }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>Total Tax in {jurMeta.name}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textLight, marginTop: 2 }}>
+                    Combined effective rate {((calc.combinedTax.total + calc.investmentTax.total) / (calc.combinedGross + calc.totalInvestReturn) * 100).toFixed(1)}% on {fmt(calc.combinedGross + calc.totalInvestReturn)} of income
+                  </div>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: 26, color: COLORS.danger }}>{fmt(calc.combinedTax.total + calc.investmentTax.total)}</span>
+              </div>
+            </div>
+
             <div className="grid-2" style={{ gap: 24 }}>
               {/* Your Income */}
               <div className="mc-card" style={cardStyle}>
@@ -636,10 +844,10 @@ export default function MergeConflict() {
                   <YAxis tickFormatter={fmtK} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Bar dataKey="Federal" fill={PIE_COLORS[0]} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="NY State" fill={PIE_COLORS[1]} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="NYC Local" fill={PIE_COLORS[2]} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="FICA" fill={PIE_COLORS[3]} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="federal" name="Federal" fill={PIE_COLORS[0]} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="state" name={jurMeta.stateLabel} fill={PIE_COLORS[1]} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="local" name={jurMeta.localLabel} fill={PIE_COLORS[2]} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="fica" name="FICA" fill={PIE_COLORS[3]} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
